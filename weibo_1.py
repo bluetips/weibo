@@ -35,10 +35,27 @@ class Weibo(object):
         self.user = {}  # 存储目标微博用户信息
         self.got_count = 0  # 爬取到的微博数
 
+    def get_proxy(self):
+        while 1:
+            try:
+                proxies = requests.get(
+                    'http://api3.xiguadaili.com/ip/?tid=555999190829721&num=1000&delay=1&format=json&filter=1').json()
+                proxies = [{"http": "http://{}:{}".format(_['host'], _["port"])} for _ in proxies]
+                return proxies
+            except:
+                sleep(2)
+                continue
+
     def get_json(self, params):
         """获取网页中json数据"""
         url = 'https://m.weibo.cn/api/container/getIndex?'
         r = requests.get(url, params=params)
+        while 1:
+            if r.status_code == 200:
+                break
+            else:
+                p = random.choice(self.get_proxy())
+                r = requests.get(url, params=params, proxies=p)
         return r.json()
 
     def get_weibo_json(self, page):
