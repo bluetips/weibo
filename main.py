@@ -1,4 +1,5 @@
 import hashlib
+import random
 import time
 
 from pymongo import MongoClient
@@ -32,6 +33,7 @@ class Spider(object):
                 pn = 1
                 while 1:
                     wb.get_one_page(pn)
+                    time.sleep(random.randint(6, 10))
                     pn += 1
                     if pn == 3:
                         break

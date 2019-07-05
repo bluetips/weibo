@@ -8,7 +8,6 @@ import math
 import os
 import random
 import sys
-import time
 import traceback
 from collections import OrderedDict
 from datetime import datetime, timedelta
@@ -36,27 +35,10 @@ class Weibo(object):
         self.user = {}  # 存储目标微博用户信息
         self.got_count = 0  # 爬取到的微博数
 
-    def get_proxy(self):
-        while 1:
-            try:
-                proxies = requests.get(
-                    'http://api3.xiguadaili.com/ip/?tid=555999190829721&num=1000&delay=1&format=json&filter=1').json()
-                proxies = [{"http": "http://{}:{}".format(_['host'], _["port"])} for _ in proxies]
-                return proxies
-            except:
-                sleep(2)
-                continue
-
     def get_json(self, params):
         """获取网页中json数据"""
         url = 'https://m.weibo.cn/api/container/getIndex?'
         r = requests.get(url, params=params)
-        while 1:
-            if r.status_code == 200:
-                break
-            else:
-                p = random.choice(self.get_proxy())
-                r = requests.get(url, params=params, proxies=p)
         return r.json()
 
     def get_weibo_json(self, page):
@@ -80,28 +62,13 @@ class Weibo(object):
     def get_long_weibo(self, id):
         """获取长微博"""
         url = 'https://m.weibo.cn/detail/%s' % id
-        # h = {
-        #     'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1',
-        #     'cookie':'SCF=AuFpuKG4o9P48-opupYDITqwe56JVLi4cbJylKdg_OVeBUAh6H6EGY_-96wnOXCn4VMqhjTeggEovNrIhABgj2E.; _WEIBO_UID=2677631447; SUB=_2A25wGAnADeRhGeRI7FUX8y_IzzuIHXVT4peIrDV6PUJbkdAKLVDVkW1NUptz-0v1CXLWV_Hi7iIB440B-6EkMA0y; WEIBOCN_FROM=1110006030; M_WEIBOCN_PARAMS=oid%3D4390419901486540%26luicode%3D20000061%26lfid%3D4390621563319179%26uicode%3D20000061%26fid%3D4390419901486540'
-        # }
-        html = requests.get(url)
-        while 1:
-            if html.status_code == 200:
-                break
-            else:
-                time.sleep('10')
-                html = requests.get(url)
-        html = html.text
+        html = requests.get(url).text
         html = html[html.find('"status":'):]
         html = html[:html.rfind('"hotScheme"')]
         html = html[:html.rfind(',')]
         html = '{' + html + '}'
         js = json.loads(html, strict=False)
-
-        try:
-            weibo_info = js['status']
-        except Exception:
-            pass
+        weibo_info = js['status']
         weibo = self.parse_weibo(weibo_info)
         return weibo
 
@@ -236,10 +203,7 @@ class Weibo(object):
 
     def parse_weibo(self, weibo_info):
         weibo = OrderedDict()
-        try:
-            weibo['user_id'] = weibo_info['user']['id']
-        except Exception:
-            return
+        weibo['user_id'] = weibo_info['user']['id']
         weibo['screen_name'] = weibo_info['user']['screen_name']
         weibo['id'] = int(weibo_info['id'])
         text_body = weibo_info['text']
@@ -340,7 +304,8 @@ class Weibo(object):
                         if (not self.filter) or ('retweet' not in wb.keys()):
                             self.weibo.append(wb)
                             self.got_count = self.got_count + 1
-                            # self.print_weibo(wb)
+                            self.print_weibo(wb)
+
         except Exception as e:
             print("Error: ", e)
             traceback.print_exc()
@@ -474,27 +439,20 @@ class Weibo(object):
 
 def main():
     try:
-        # user_id = 2601808260  # 可以改成任意合法的用户id
-        # filter = 1  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
-        # pic_download = 1  # 值为0代表不下载微博原始图片,1代表下载微博原始图片
-        # wb = Weibo(user_id, filter, pic_download)
-        # wb.start()
-
         client = MongoClient(host='139.196.91.125', port=27017)
         db_2 = client['weibo']['star_id']
         ret = db_2.find()
-        pn =1
+        pn = 1
         for i in ret:
             if pn == 1:
                 pn += 1
                 continue
             pn += 1
             uid = int(i['star_id'])
-            filter = 1  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
+            filter = 0  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
             pic_download = 0  # 值为0代表不下载微博原始图片,1代表下载微博原始图片
             wb = Weibo(uid, filter, pic_download)
             wb.start()
-
     except Exception as e:
         print('Error: ', e)
         traceback.print_exc()
