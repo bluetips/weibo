@@ -12,11 +12,13 @@ import traceback
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from time import sleep
-
+from queue import Queue
 import requests
 from lxml import etree
 from pymongo import MongoClient
 from tqdm import tqdm
+
+queue = Queue()
 
 
 class Weibo(object):
@@ -454,25 +456,17 @@ class Weibo(object):
             traceback.print_exc()
 
 
+
 def main():
-    try:
-        client = MongoClient(host='139.196.91.125', port=27017)
-        db_2 = client['weibo']['star_id']
-        ret = db_2.find()
-        pn = 1
-        for i in ret:
-            if pn == 1:
-                pn += 1
-                continue
-            pn += 1
-            uid = int(i['star_id'])
-            filter = 0  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
-            pic_download = 0  # 值为0代表不下载微博原始图片,1代表下载微博原始图片
-            wb = Weibo(uid, filter, pic_download)
-            wb.start()
-    except Exception as e:
-        print('Error: ', e)
-        traceback.print_exc()
+    client = MongoClient(host='139.196.91.125', port=27017)
+    db_2 = client['weibo']['star_id']
+    ret = db_2.find()
+    for i in ret:
+        uid = int(i['star_id'])
+        filter = 0  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
+        pic_download = 0  # 值为0代表不下载微博原始图片,1代表下载微博原始图片
+        wb = Weibo(uid, filter, pic_download)
+        wb.start()
 
 
 if __name__ == '__main__':

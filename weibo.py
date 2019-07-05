@@ -490,7 +490,7 @@ def main():
                 continue
             pn += 1
             uid = int(i['star_id'])
-            filter = 1  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
+            filter = 0  # 值为0表示爬取全部微博（原创微博+转发微博），值为1表示只爬取原创微博
             pic_download = 0  # 值为0代表不下载微博原始图片,1代表下载微博原始图片
             wb = Weibo(uid, filter, pic_download)
             wb.start()
