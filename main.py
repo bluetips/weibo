@@ -19,6 +19,8 @@ class Spider(object):
         self.db_2 = client['weibo']['star_id']
         pass
 
+
+
     def run(self):
         while 1:
             ret = self.db_2.find()

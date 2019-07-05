@@ -8,6 +8,7 @@ import math
 import os
 import random
 import sys
+import time
 import traceback
 from collections import OrderedDict
 from datetime import datetime, timedelta
@@ -34,10 +35,27 @@ class Weibo(object):
         self.user = {}  # 存储目标微博用户信息
         self.got_count = 0  # 爬取到的微博数
 
+    def get_proxy(self):
+        while 1:
+            try:
+                proxies = requests.get(
+                    'http://api3.xiguadaili.com/ip/?tid=555999190829721&num=1000&delay=1&format=json&filter=1').json()
+                proxies = [{"http": "http://{}:{}".format(_['host'], _["port"])} for _ in proxies]
+                return proxies
+            except:
+                sleep(2)
+                continue
+
     def get_json(self, params):
         """获取网页中json数据"""
         url = 'https://m.weibo.cn/api/container/getIndex?'
         r = requests.get(url, params=params)
+        while 1:
+            if r.status_code == 200:
+                break
+            else:
+                p = random.choice(self.get_proxy())
+                r = requests.get(url, params=params, proxies=p)
         return r.json()
 
     def get_weibo_json(self, page):
@@ -61,16 +79,28 @@ class Weibo(object):
     def get_long_weibo(self, id):
         """获取长微博"""
         url = 'https://m.weibo.cn/detail/%s' % id
-        html = requests.get(url).text
+        # h = {
+        #     'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1',
+        #     'cookie':'SCF=AuFpuKG4o9P48-opupYDITqwe56JVLi4cbJylKdg_OVeBUAh6H6EGY_-96wnOXCn4VMqhjTeggEovNrIhABgj2E.; _WEIBO_UID=2677631447; SUB=_2A25wGAnADeRhGeRI7FUX8y_IzzuIHXVT4peIrDV6PUJbkdAKLVDVkW1NUptz-0v1CXLWV_Hi7iIB440B-6EkMA0y; WEIBOCN_FROM=1110006030; M_WEIBOCN_PARAMS=oid%3D4390419901486540%26luicode%3D20000061%26lfid%3D4390621563319179%26uicode%3D20000061%26fid%3D4390419901486540'
+        # }
+        html = requests.get(url)
+        while 1:
+            if html.status_code == 200:
+                break
+            else:
+                time.sleep('10')
+                html = requests.get(url)
+        html = html.text
         html = html[html.find('"status":'):]
         html = html[:html.rfind('"hotScheme"')]
         html = html[:html.rfind(',')]
         html = '{' + html + '}'
         js = json.loads(html, strict=False)
+
         try:
             weibo_info = js['status']
         except Exception:
-            weibo_info = ''
+            pass
         weibo = self.parse_weibo(weibo_info)
         return weibo
 
@@ -177,18 +207,18 @@ class Weibo(object):
     def standardize_date(self, created_at):
         """标准化微博发布时间"""
         if u"刚刚" in created_at:
-            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
         elif u"分钟" in created_at:
             minute = created_at[:created_at.find(u"分钟")]
             minute = timedelta(minutes=int(minute))
-            created_at = (datetime.now() - minute).strftime("%Y-%m-%d %H:%M:%S")
+            created_at = (datetime.now() - minute).strftime("%Y-%m-%d %H:%M")
         elif u"小时" in created_at:
             hour = created_at[:created_at.find(u"小时")]
             hour = timedelta(hours=int(hour))
-            created_at = (datetime.now() - hour).strftime("%Y-%m-%d %H:%M:%S")
+            created_at = (datetime.now() - hour).strftime("%Y-%m-%d %H:%M")
         elif u"昨天" in created_at:
             day = timedelta(days=1)
-            created_at = (datetime.now() - day).strftime("%Y-%m-%d %H:%M:%S")
+            created_at = (datetime.now() - day).strftime("%Y-%m-%d %H:%M")
         elif created_at.count('-') == 1:
             year = datetime.now().strftime("%Y")
             created_at = year + "-" + created_at
@@ -205,7 +235,10 @@ class Weibo(object):
 
     def parse_weibo(self, weibo_info):
         weibo = OrderedDict()
-        weibo['user_id'] = weibo_info['user']['id']
+        try:
+            weibo['user_id'] = weibo_info['user']['id']
+        except Exception:
+            return
         weibo['screen_name'] = weibo_info['user']['screen_name']
         weibo['id'] = int(weibo_info['id'])
         text_body = weibo_info['text']
