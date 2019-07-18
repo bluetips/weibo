@@ -512,7 +512,7 @@ def main():
     ret = db_2.find()
     pn =1
     for i in ret:
-        if pn <=3 :
+        if pn <=15:
             pn += 1
             continue
         uid = int(i['star_id'])
